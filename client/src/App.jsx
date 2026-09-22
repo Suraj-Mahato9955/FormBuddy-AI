@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 function App() {
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -19,15 +20,14 @@ function App() {
     if (!selectedFile) return;
 
     setError("");
+    setMessage("");
 
-    // File type validation
     if (!allowedTypes.includes(selectedFile.type)) {
       setError("Please upload a PDF, JPG, or PNG file.");
       event.target.value = "";
       return;
     }
 
-    // 10 MB limit
     if (selectedFile.size > 10 * 1024 * 1024) {
       setError("File size must be less than 10 MB.");
       event.target.value = "";
@@ -40,25 +40,53 @@ function App() {
   const handleRemoveFile = () => {
     setFile(null);
     setError("");
+    setMessage("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file) {
       setError("Please select a form first.");
       return;
     }
 
     setIsUploading(true);
+    setError("");
+    setMessage("");
 
-    // Backend integration will be added next
-    setTimeout(() => {
+    const formData = new FormData();
+
+    formData.append("form", file);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed.");
+      }
+
+      setMessage("Form uploaded successfully! 🎉");
+
+      console.log("Uploaded file:", data.file);
+    } catch (error) {
+      setError(
+        error.message ||
+          "Unable to connect to FormBuddy server."
+      );
+    } finally {
       setIsUploading(false);
-      alert("File selected successfully! Backend connection coming next.");
-    }, 1000);
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -85,10 +113,12 @@ function App() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <main className="hero">
         <div className="hero-content">
-          <p className="badge">🤖 AI-Powered Form Assistant</p>
+          <p className="badge">
+            🤖 AI-Powered Form Assistant
+          </p>
 
           <h1>
             Understand Any Form
@@ -97,11 +127,12 @@ function App() {
           </h1>
 
           <p className="description">
-            Upload a PDF or image of any complex form and FormBuddy AI
-            will explain each field in simple language.
+            Upload a PDF or image of any complex form and
+            FormBuddy AI will explain each field in simple
+            language.
           </p>
 
-          {/* Upload Section */}
+          {/* Upload Box */}
           <div className="upload-box">
             {!file ? (
               <>
@@ -109,7 +140,9 @@ function App() {
 
                 <h3>Upload your form</h3>
 
-                <p>PDF, JPG or PNG • Maximum 10 MB</p>
+                <p>
+                  PDF, JPG or PNG • Maximum 10 MB
+                </p>
 
                 <input
                   ref={fileInputRef}
@@ -121,7 +154,9 @@ function App() {
 
                 <button
                   className="upload-button"
-                  onClick={() => fileInputRef.current.click()}
+                  onClick={() =>
+                    fileInputRef.current.click()
+                  }
                 >
                   Choose Form
                 </button>
@@ -129,7 +164,9 @@ function App() {
             ) : (
               <>
                 <div className="file-icon">
-                  {file.type === "application/pdf" ? "📕" : "🖼️"}
+                  {file.type === "application/pdf"
+                    ? "📕"
+                    : "🖼️"}
                 </div>
 
                 <h3>{file.name}</h3>
@@ -142,7 +179,9 @@ function App() {
                     onClick={handleUpload}
                     disabled={isUploading}
                   >
-                    {isUploading ? "Uploading..." : "Analyze Form"}
+                    {isUploading
+                      ? "Uploading..."
+                      : "Analyze Form"}
                   </button>
 
                   <button
@@ -156,7 +195,17 @@ function App() {
               </>
             )}
 
-            {error && <p className="error-message">{error}</p>}
+            {error && (
+              <p className="error-message">
+                ❌ {error}
+              </p>
+            )}
+
+            {message && (
+              <p className="success-message">
+                {message}
+              </p>
+            )}
           </div>
 
           <p className="privacy-text">
@@ -167,14 +216,17 @@ function App() {
 
       {/* Features */}
       <section className="features" id="features">
-        <h2>What FormBuddy AI can help with</h2>
+        <h2>
+          What FormBuddy AI can help with
+        </h2>
 
         <div className="feature-container">
           <div className="feature-card">
             <div>💡</div>
             <h3>Simple Explanations</h3>
             <p>
-              Understand what each form field means in simple language.
+              Understand what each form field means in
+              simple language.
             </p>
           </div>
 
@@ -182,7 +234,8 @@ function App() {
             <div>📋</div>
             <h3>Document Checklist</h3>
             <p>
-              Know which documents you need before submitting your form.
+              Know which documents you need before
+              submitting your form.
             </p>
           </div>
 
@@ -190,7 +243,8 @@ function App() {
             <div>✅</div>
             <h3>Error Checking</h3>
             <p>
-              Find possible mistakes before submitting your application.
+              Find possible mistakes before submitting
+              your application.
             </p>
           </div>
         </div>
