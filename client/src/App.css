@@ -217,3 +217,42 @@
     padding: 60px 20px;
   }
 }
+.file-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.file-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.remove-button {
+  padding: 13px 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.remove-button:hover {
+  background: #f1f5f9;
+}
+
+.remove-button:disabled,
+.upload-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin: 20px 0 0 !important;
+  color: #dc2626 !important;
+  font-size: 14px !important;
+  font-weight: 500;
+}
