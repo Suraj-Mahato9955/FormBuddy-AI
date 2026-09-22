@@ -262,3 +262,113 @@
   font-size: 14px !important;
   font-weight: 600;
 }
+/* =========================
+   AI ANALYSIS
+========================= */
+
+.analysis-section {
+  padding: 70px 20px;
+  background: #f8fafc;
+}
+
+.analysis-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.analysis-header > span {
+  font-size: 40px;
+}
+
+.analysis-header h2 {
+  margin: 0;
+  font-size: 30px;
+  color: #0f172a;
+}
+
+.analysis-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+}
+
+.analysis-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 25px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.05);
+}
+
+.analysis-card h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.analysis-card p {
+  color: #475569;
+  line-height: 1.7;
+}
+
+.analysis-card ul {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.analysis-card li {
+  margin-bottom: 10px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.field-item {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.field-item h4 {
+  margin-top: 0;
+  color: #2563eb;
+  font-size: 17px;
+}
+
+.field-item p {
+  margin-bottom: 8px;
+}
+
+.field-item strong {
+  color: #0f172a;
+}
+
+/* Mobile */
+
+@media (max-width: 768px) {
+  .analysis-section {
+    padding: 50px 15px;
+  }
+
+  .analysis-header h2 {
+    font-size: 24px;
+  }
+
+  .analysis-card {
+    padding: 20px;
+  }
+}
