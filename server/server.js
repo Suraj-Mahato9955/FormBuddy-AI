@@ -1,34 +1,28 @@
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
-const OpenAI = require("openai");
+const path = require("path");
+const dotenv = require("dotenv");
+const { GoogleGenAI } = require("@google/genai");
 
-require("dotenv").config();
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 app.use(cors());
 app.use(express.json());
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// ===============================
-// Upload folder
-// ===============================
 
 const uploadDir = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
-
-// ===============================
-// Multer configuration
-// ===============================
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -39,434 +33,276 @@ const storage = multer.diskStorage({
     const uniqueName =
       Date.now() + "-" + Math.round(Math.random() * 1e9);
 
-    cb(
-      null,
-      uniqueName + path.extname(file.originalname)
-    );
+    cb(null, uniqueName + path.extname(file.originalname));
   },
 });
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-  ];
-
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Only PDF, JPG and PNG files are allowed."),
-      false
-    );
-  }
-};
+const allowedTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+];
 
 const upload = multer({
   storage,
-  fileFilter,
+
+  fileFilter: (req, file, cb) => {
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF, JPG and PNG files are allowed."));
+    }
+  },
+
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
 });
 
-// ===============================
-// Home route
-// ===============================
-
 app.get("/", (req, res) => {
   res.json({
-    message: "FormBuddy API is running",
+    message: "FormBuddy AI server is running 🚀",
   });
 });
 
-// ===============================
-// AI Analysis
-// ===============================
+app.post("/api/analyze", upload.single("form"), async (req, res) => {
+  let uploadedFilePath = null;
 
-app.post(
-  "/api/analyze",
-  upload.single("form"),
-  async (req, res) => {
-    let uploadedOpenAIFile = null;
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Please upload a PDF, JPG or PNG file.",
+      });
+    }
 
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "No file uploaded.",
-        });
-      }
+    uploadedFilePath = req.file.path;
 
-      console.log(
-        "Analyzing:",
-        req.file.originalname
-      );
+    console.log("📄 File received:", req.file.originalname);
 
-      const prompt = `
-You are FormBuddy AI, an expert assistant for helping people understand complex forms.
+    console.log("⬆️ Uploading file to Gemini...");
+
+    const geminiFile = await ai.files.upload({
+      file: uploadedFilePath,
+      config: {
+        mimeType: req.file.mimetype,
+        displayName: req.file.originalname,
+      },
+    });
+
+    console.log("✅ File uploaded to Gemini");
+
+    const prompt = `
+You are FormBuddy AI, an intelligent assistant that helps ordinary people
+understand and complete complicated forms.
 
 Analyze the uploaded form carefully.
 
-Your job is NOT to fill in personal information that is unknown.
-Instead, explain the form in simple language so the user can complete it correctly.
+Your job is NOT to invent information.
 
-Return:
+Extract and explain only what can reasonably be determined from the form.
 
-1. What the form is for
-2. Who normally needs this form
-3. Every important field/section found in the form
-4. Simple explanation of each field
-5. What the user should enter in each field
-6. Required documents mentioned or clearly implied by the form
-7. Possible mistakes the user should avoid
-8. Important notes or warnings
+For every important field:
+1. Give the field name.
+2. Explain what the field means in very simple language.
+3. Explain what the user should enter in that field.
+4. If the answer depends on personal information, clearly tell the user
+   that they need to provide their own information.
 
-Use simple English.
-Do not invent information that is not present in the form.
-If something is unclear, say "Not clearly specified in the form."
+Also identify:
 
-For sensitive fields such as Aadhaar number, PAN, bank account number, password, OTP, etc., explain what the field means but do not ask the user to share those values with FormBuddy.
+- What this form is for
+- Who normally needs this form
+- Required documents mentioned in the form
+- Common mistakes a person may make
+- Important instructions or notes
+- Deadlines visible in the form
+- Eligibility requirements visible in the form
+- Signature requirements
+- Declaration or verification requirements
 
-Return the answer in the requested JSON structure.
+Important rules:
+
+- Do not invent missing information.
+- Do not guess personal information.
+- Do not claim something is required unless the form indicates it.
+- Keep explanations beginner-friendly.
+- Use simple English.
+- If the form contains Hindi or another language, understand it and
+  explain it in simple English.
+- If something is unclear, say that it is unclear instead of guessing.
+
+Return ONLY valid JSON matching the requested structure.
 `;
 
-      let response;
+    console.log("🤖 Sending form to Gemini Interactions API...");
 
-      // ===============================
-      // PDF
-      // ===============================
+    const interaction = await ai.interactions.create({
+      model: "gemini-3.6-flash",
 
-      if (req.file.mimetype === "application/pdf") {
-        uploadedOpenAIFile = await openai.files.create({
-          file: fs.createReadStream(req.file.path),
-          purpose: "user_data",
-        });
+      input: [
+        {
+          type: "document",
+          uri: geminiFile.uri,
+          mime_type: geminiFile.mimeType,
+        },
+        {
+          type: "text",
+          text: prompt,
+        },
+      ],
 
-        response = await openai.responses.create({
-          model: "gpt-5.6-luna",
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
 
-          input: [
-            {
-              role: "user",
+        schema: {
+          type: "object",
 
-              content: [
-                {
-                  type: "input_file",
-                  file_id: uploadedOpenAIFile.id,
-                  detail: "high",
-                },
-
-                {
-                  type: "input_text",
-                  text: prompt,
-                },
-              ],
+          properties: {
+            formPurpose: {
+              type: "string",
             },
-          ],
 
-          text: {
-            format: {
-              type: "json_schema",
+            whoNeedsIt: {
+              type: "string",
+            },
 
-              name: "form_analysis",
+            fields: {
+              type: "array",
 
-              strict: true,
-
-              schema: {
+              items: {
                 type: "object",
 
                 properties: {
-                  formPurpose: {
+                  fieldName: {
                     type: "string",
                   },
 
-                  whoNeedsIt: {
+                  explanation: {
                     type: "string",
                   },
 
-                  fields: {
-                    type: "array",
-
-                    items: {
-                      type: "object",
-
-                      properties: {
-                        fieldName: {
-                          type: "string",
-                        },
-
-                        explanation: {
-                          type: "string",
-                        },
-
-                        whatToEnter: {
-                          type: "string",
-                        },
-                      },
-
-                      required: [
-                        "fieldName",
-                        "explanation",
-                        "whatToEnter",
-                      ],
-
-                      additionalProperties: false,
-                    },
-                  },
-
-                  documents: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
-                  },
-
-                  mistakes: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
-                  },
-
-                  importantNotes: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
+                  whatToEnter: {
+                    type: "string",
                   },
                 },
 
                 required: [
-                  "formPurpose",
-                  "whoNeedsIt",
-                  "fields",
-                  "documents",
-                  "mistakes",
-                  "importantNotes",
+                  "fieldName",
+                  "explanation",
+                  "whatToEnter",
                 ],
+              },
+            },
 
-                additionalProperties: false,
+            documents: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+            },
+
+            mistakes: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+            },
+
+            importantNotes: {
+              type: "array",
+              items: {
+                type: "string",
               },
             },
           },
-        });
-      }
 
-      // ===============================
-      // IMAGE
-      // ===============================
-
-      else {
-        const imageBuffer = fs.readFileSync(
-          req.file.path
-        );
-
-        const base64Image =
-          imageBuffer.toString("base64");
-
-        const imageDataUrl =
-          `data:${req.file.mimetype};base64,${base64Image}`;
-
-        response = await openai.responses.create({
-          model: "gpt-5.6-luna",
-
-          input: [
-            {
-              role: "user",
-
-              content: [
-                {
-                  type: "input_image",
-                  image_url: imageDataUrl,
-                  detail: "high",
-                },
-
-                {
-                  type: "input_text",
-                  text: prompt,
-                },
-              ],
-            },
+          required: [
+            "formPurpose",
+            "whoNeedsIt",
+            "fields",
+            "documents",
+            "mistakes",
+            "importantNotes",
           ],
+        },
+      },
 
-          text: {
-            format: {
-              type: "json_schema",
+      // Prevent storing the interaction unnecessarily
+      store: false,
+    });
 
-              name: "form_analysis",
+    console.log("✅ Gemini analysis completed");
 
-              strict: true,
+    const responseText = interaction.output_text;
 
-              schema: {
-                type: "object",
+    if (!responseText) {
+      throw new Error("Gemini returned an empty response.");
+    }
 
-                properties: {
-                  formPurpose: {
-                    type: "string",
-                  },
+    let analysis;
 
-                  whoNeedsIt: {
-                    type: "string",
-                  },
-
-                  fields: {
-                    type: "array",
-
-                    items: {
-                      type: "object",
-
-                      properties: {
-                        fieldName: {
-                          type: "string",
-                        },
-
-                        explanation: {
-                          type: "string",
-                        },
-
-                        whatToEnter: {
-                          type: "string",
-                        },
-                      },
-
-                      required: [
-                        "fieldName",
-                        "explanation",
-                        "whatToEnter",
-                      ],
-
-                      additionalProperties: false,
-                    },
-                  },
-
-                  documents: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
-                  },
-
-                  mistakes: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
-                  },
-
-                  importantNotes: {
-                    type: "array",
-
-                    items: {
-                      type: "string",
-                    },
-                  },
-                },
-
-                required: [
-                  "formPurpose",
-                  "whoNeedsIt",
-                  "fields",
-                  "documents",
-                  "mistakes",
-                  "importantNotes",
-                ],
-
-                additionalProperties: false,
-              },
-            },
-          },
-        });
-      }
-
-      const analysis = JSON.parse(
-        response.output_text
-      );
-
-      console.log("AI analysis completed.");
-
-      res.json({
-        success: true,
-        message: "Form analyzed successfully.",
-        analysis,
-      });
+    try {
+      analysis = JSON.parse(responseText);
     } catch (error) {
-      console.error("AI ANALYSIS ERROR:");
-      console.error(error);
+      console.error("Invalid Gemini JSON:", responseText);
 
-      res.status(500).json({
-        success: false,
-        message:
-          error?.message ||
-          "Unable to analyze the form.",
-      });
-    } finally {
-      // Delete local uploaded file
-      if (req.file?.path) {
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch (error) {
-          console.log(
-            "Local file cleanup failed."
-          );
-        }
-      }
-
-      // Delete temporary OpenAI file
-      if (uploadedOpenAIFile?.id) {
-        try {
-          await openai.files.delete(
-            uploadedOpenAIFile.id
-          );
-        } catch (error) {
-          console.log(
-            "OpenAI file cleanup failed."
-          );
-        }
-      }
+      throw new Error(
+        "Gemini returned an invalid analysis response."
+      );
     }
-  }
-);
 
-// ===============================
-// Error handler
-// ===============================
+    console.log("📊 Analysis ready");
 
-app.use(
-  (error, req, res, next) => {
-    if (error instanceof multer.MulterError) {
-      if (error.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({
-          success: false,
-          message:
-            "File size must be less than 10 MB.",
-        });
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
+    }
+
+    res.json({
+      success: true,
+      analysis,
+    });
+
+  } catch (error) {
+    console.error("❌ Form analysis error:", error);
+
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      try {
+        fs.unlinkSync(uploadedFilePath);
+      } catch (deleteError) {
+        console.error("Could not delete temporary file.");
       }
     }
 
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       message:
         error.message ||
-        "Something went wrong.",
+        "Something went wrong while analyzing the form.",
     });
   }
-);
+});
 
-// ===============================
-// Start server
-// ===============================
+app.use((error, req, res, next) => {
+  console.error("❌ Server error:", error);
 
-const PORT = process.env.PORT || 5000;
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        message: "File size must be less than 10 MB.",
+      });
+    }
+  }
+
+  res.status(500).json({
+    message:
+      error.message ||
+      "Something went wrong on the server.",
+  });
+});
 
 app.listen(PORT, () => {
   console.log(
-    `FormBuddy server running on http://localhost:${PORT}`
+    `🚀 FormBuddy AI server running on http://localhost:${PORT}`
   );
 });
