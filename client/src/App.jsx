@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+
 import {
   Upload,
   FileText,
@@ -13,18 +14,32 @@ import {
   Sun,
   CheckCircle2,
   ClipboardCheck,
+  Languages,
 } from "lucide-react";
+
 import "./App.css";
 
 function App() {
   const [file, setFile] = useState(null);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
 
-  const [completedItems, setCompletedItems] = useState({});
+  const [error, setError] = useState("");
+
+  const [message, setMessage] = useState("");
+
+  const [isUploading, setIsUploading] =
+    useState(false);
+
+  const [analysis, setAnalysis] =
+    useState(null);
+
+  const [darkMode, setDarkMode] =
+    useState(false);
+
+  const [language, setLanguage] =
+    useState("english");
+
+  const [completedItems, setCompletedItems] =
+    useState({});
 
   const fileInputRef = useRef(null);
 
@@ -34,8 +49,13 @@ function App() {
     "image/png",
   ];
 
+  /* =========================
+     FILE SELECTION
+  ========================= */
+
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
+    const selectedFile =
+      event.target.files[0];
 
     if (!selectedFile) return;
 
@@ -43,68 +63,117 @@ function App() {
     setMessage("");
     setAnalysis(null);
     setCompletedItems({});
+    setLanguage("english");
 
-    if (!allowedTypes.includes(selectedFile.type)) {
-      setError("Please upload a PDF, JPG, or PNG file.");
+    if (
+      !allowedTypes.includes(
+        selectedFile.type
+      )
+    ) {
+      setError(
+        "Please upload a PDF, JPG, or PNG file."
+      );
+
       event.target.value = "";
+
       return;
     }
 
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must be less than 10 MB.");
+    if (
+      selectedFile.size >
+      10 * 1024 * 1024
+    ) {
+      setError(
+        "File size must be less than 10 MB."
+      );
+
       event.target.value = "";
+
       return;
     }
 
     setFile(selectedFile);
   };
 
+  /* =========================
+     REMOVE FILE
+  ========================= */
+
   const handleRemoveFile = () => {
     setFile(null);
+
     setError("");
+
     setMessage("");
+
     setAnalysis(null);
+
     setCompletedItems({});
+
+    setLanguage("english");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
+  /* =========================
+     UPLOAD + ANALYZE
+  ========================= */
+
   const handleUpload = async () => {
     if (!file) {
-      setError("Please select a form first.");
+      setError(
+        "Please select a form first."
+      );
+
       return;
     }
 
     setIsUploading(true);
+
     setError("");
+
     setMessage("");
+
     setAnalysis(null);
+
     setCompletedItems({});
 
     const formData = new FormData();
-    formData.append("form", file);
+
+    formData.append(
+      "form",
+      file
+    );
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/analyze",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response =
+        await fetch(
+          "http://localhost:5000/api/analyze",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Form analysis failed."
+          data.message ||
+            "Form analysis failed."
         );
       }
 
-      setAnalysis(data.analysis);
-      setMessage("Form analyzed successfully!");
+      setAnalysis(
+        data.analysis
+      );
+
+      setMessage(
+        "Form analyzed successfully!"
+      );
     } catch (error) {
       setError(
         error.message ||
@@ -115,12 +184,22 @@ function App() {
     }
   };
 
+  /* =========================
+     ANALYZE ANOTHER
+  ========================= */
+
   const handleAnalyzeAnother = () => {
     setFile(null);
+
     setError("");
+
     setMessage("");
+
     setAnalysis(null);
+
     setCompletedItems({});
+
+    setLanguage("english");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -132,69 +211,136 @@ function App() {
     });
   };
 
-  const formatFileSize = (bytes) => {
+  /* =========================
+     FILE SIZE
+  ========================= */
+
+  const formatFileSize = (
+    bytes
+  ) => {
     if (bytes < 1024) {
       return `${bytes} Bytes`;
     }
 
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
+    if (
+      bytes <
+      1024 * 1024
+    ) {
+      return `${(
+        bytes / 1024
+      ).toFixed(1)} KB`;
     }
 
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(
+      bytes /
+      (1024 * 1024)
+    ).toFixed(1)} MB`;
   };
 
-  /* ================================
-     SMART CHECKLIST
-  ================================= */
+  /* =========================
+     CHECKLIST
+  ========================= */
 
   const checklistItems = [
     {
       id: "fields",
-      title: "Complete Form Fields",
+
+      title:
+        "Complete Form Fields",
+
       description:
         "Review and complete all important fields.",
     },
+
     {
       id: "documents",
-      title: "Prepare Required Documents",
+
+      title:
+        "Prepare Required Documents",
+
       description:
         "Keep all required documents ready.",
     },
+
     {
       id: "mistakes",
-      title: "Check for Mistakes",
+
+      title:
+        "Check for Mistakes",
+
       description:
         "Review possible mistakes before submitting.",
     },
+
     {
       id: "notes",
-      title: "Read Important Notes",
+
+      title:
+        "Read Important Notes",
+
       description:
         "Check deadlines, instructions and declarations.",
     },
   ];
 
-  const toggleChecklistItem = (id) => {
-    setCompletedItems((previous) => ({
-      ...previous,
-      [id]: !previous[id],
-    }));
+  const toggleChecklistItem = (
+    id
+  ) => {
+    setCompletedItems(
+      (previous) => ({
+        ...previous,
+        [id]:
+          !previous[id],
+      })
+    );
   };
 
-  const completedCount = checklistItems.filter(
-    (item) => completedItems[item.id]
-  ).length;
+  const completedCount =
+    checklistItems.filter(
+      (item) =>
+        completedItems[
+          item.id
+        ]
+    ).length;
 
   const progress = Math.round(
-    (completedCount / checklistItems.length) * 100
+    (completedCount /
+      checklistItems.length) *
+      100
   );
 
+  /* =========================
+     LANGUAGE HELPERS
+  ========================= */
+
+  const isHinglish =
+    language === "hinglish";
+
+  const getText = (
+    english,
+    hinglish
+  ) => {
+    if (
+      isHinglish &&
+      hinglish
+    ) {
+      return hinglish;
+    }
+
+    return english;
+  };
+
   return (
-    <div className={`app ${darkMode ? "dark" : ""}`}>
-      {/* ================================
+    <div
+      className={`app ${
+        darkMode
+          ? "dark"
+          : ""
+      }`}
+    >
+      {/* =========================
           NAVBAR
-      ================================= */}
+      ========================= */}
 
       <nav className="navbar">
         <div className="brand">
@@ -203,8 +349,13 @@ function App() {
           </div>
 
           <div>
-            <h2>FormBuddy</h2>
-            <span>AI Form Assistant</span>
+            <h2>
+              FormBuddy
+            </h2>
+
+            <span>
+              AI Form Assistant
+            </span>
           </div>
         </div>
 
@@ -221,7 +372,11 @@ function App() {
 
           <button
             className="theme-button"
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={() =>
+              setDarkMode(
+                !darkMode
+              )
+            }
             aria-label="Toggle theme"
           >
             {darkMode ? (
@@ -233,31 +388,33 @@ function App() {
         </div>
       </nav>
 
-      {/* ================================
+      {/* =========================
           HERO
-      ================================= */}
+      ========================= */}
 
       <main className="hero">
         <div className="hero-content">
           <div className="badge">
             <Sparkles size={15} />
+
             AI-Powered Form Assistant
           </div>
 
           <h1>
             Understand Any Form.
             <br />
+
             <span>
               Complete It With Confidence.
             </span>
           </h1>
 
           <p className="description">
-            Upload a complex form and FormBuddy AI will
-            explain every important field in simple language.
+            Upload a complex form and
+            FormBuddy AI will explain
+            every important field in
+            simple language.
           </p>
-
-          {/* UPLOAD BOX */}
 
           <div className="upload-box">
             {!file ? (
@@ -266,17 +423,22 @@ function App() {
                   <Upload size={30} />
                 </div>
 
-                <h3>Upload your form</h3>
+                <h3>
+                  Upload your form
+                </h3>
 
                 <p>
-                  Drop your PDF or image here, or choose a file
+                  Drop your PDF or image
+                  here, or choose a file
                 </p>
 
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileChange}
+                  onChange={
+                    handleFileChange
+                  }
                   hidden
                 />
 
@@ -287,11 +449,13 @@ function App() {
                   }
                 >
                   <Upload size={18} />
+
                   Choose Form
                 </button>
 
                 <small>
-                  PDF, JPG or PNG • Maximum 10 MB
+                  PDF, JPG or PNG •
+                  Maximum 10 MB
                 </small>
               </>
             ) : (
@@ -305,14 +469,20 @@ function App() {
                 </h3>
 
                 <p>
-                  {formatFileSize(file.size)}
+                  {formatFileSize(
+                    file.size
+                  )}
                 </p>
 
                 <div className="file-actions">
                   <button
                     className="primary-button"
-                    onClick={handleUpload}
-                    disabled={isUploading}
+                    onClick={
+                      handleUpload
+                    }
+                    disabled={
+                      isUploading
+                    }
                   >
                     {isUploading ? (
                       <>
@@ -320,11 +490,13 @@ function App() {
                           size={18}
                           className="spin"
                         />
+
                         Analyzing...
                       </>
                     ) : (
                       <>
                         <Sparkles size={18} />
+
                         Analyze Form
                       </>
                     )}
@@ -332,10 +504,15 @@ function App() {
 
                   <button
                     className="secondary-button"
-                    onClick={handleRemoveFile}
-                    disabled={isUploading}
+                    onClick={
+                      handleRemoveFile
+                    }
+                    disabled={
+                      isUploading
+                    }
                   >
                     <X size={18} />
+
                     Remove
                   </button>
                 </div>
@@ -345,6 +522,7 @@ function App() {
             {error && (
               <p className="error-message">
                 <AlertTriangle size={16} />
+
                 {error}
               </p>
             )}
@@ -352,128 +530,300 @@ function App() {
             {message && (
               <p className="success-message">
                 <CheckCircle2 size={16} />
+
                 {message}
               </p>
             )}
           </div>
 
           <div className="privacy-note">
-            🔒 Your uploaded document is processed securely.
+            🔒 Your uploaded document is
+            processed for analysis.
           </div>
         </div>
       </main>
 
-      {/* ================================
+      {/* =========================
           HOW IT WORKS
-      ================================= */}
+      ========================= */}
 
       <section
         className="how-section"
         id="how-it-works"
       >
         <div className="section-heading">
-          <span>Simple process</span>
+          <span>
+            Simple process
+          </span>
 
-          <h2>How FormBuddy works</h2>
+          <h2>
+            How FormBuddy works
+          </h2>
 
           <p>
-            No complicated instructions. Just upload and
-            understand.
+            No complicated instructions.
+            Just upload and understand.
           </p>
         </div>
 
         <div className="steps">
           <div className="step">
-            <div className="step-number">1</div>
+            <div className="step-number">
+              1
+            </div>
 
             <Upload size={25} />
 
-            <h3>Upload</h3>
+            <h3>
+              Upload
+            </h3>
 
             <p>
-              Upload your PDF or image of the form.
+              Upload your PDF or
+              image of the form.
             </p>
           </div>
 
           <div className="step">
-            <div className="step-number">2</div>
+            <div className="step-number">
+              2
+            </div>
 
             <Sparkles size={25} />
 
-            <h3>AI Analysis</h3>
+            <h3>
+              AI Analysis
+            </h3>
 
             <p>
-              FormBuddy reads and understands the form.
+              FormBuddy reads and
+              understands the form.
             </p>
           </div>
 
           <div className="step">
-            <div className="step-number">3</div>
+            <div className="step-number">
+              3
+            </div>
 
             <CheckCircle2 size={25} />
 
-            <h3>Understand</h3>
+            <h3>
+              Understand
+            </h3>
 
             <p>
-              Get simple explanations and useful guidance.
+              Get simple explanations
+              and useful guidance.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ================================
-          ANALYSIS
-      ================================= */}
+      {/* =========================
+          AI ANALYSIS
+      ========================= */}
 
       {analysis && (
         <section className="analysis-section">
           <div className="analysis-container">
 
-            {/* ANALYSIS HEADER */}
+            {/* TOP */}
 
             <div className="analysis-top">
               <div>
                 <div className="analysis-label">
                   <Sparkles size={16} />
+
                   AI Analysis Complete
                 </div>
 
-                <h2>Your Form Breakdown</h2>
+                <h2>
+                  Your Form Breakdown
+                </h2>
 
                 <p>
-                  FormBuddy has analyzed your document and
-                  simplified the important information.
+                  FormBuddy has analyzed
+                  your document and
+                  simplified the important
+                  information.
                 </p>
               </div>
 
               <button
                 className="secondary-button"
-                onClick={handleAnalyzeAnother}
+                onClick={
+                  handleAnalyzeAnother
+                }
               >
                 <RefreshCw size={17} />
+
                 Analyze Another
               </button>
             </div>
 
-            {/* ================================
-                SMART CHECKLIST
-            ================================= */}
+            {/* LANGUAGE SWITCH */}
+
+            <div
+              className="language-switch"
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "space-between",
+                gap: "15px",
+                padding: "14px 18px",
+                marginBottom:
+                  "20px",
+                borderRadius:
+                  "14px",
+                border:
+                  "1px solid #e5e7eb",
+                background:
+                  darkMode
+                    ? "#151922"
+                    : "#ffffff",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  gap: "10px",
+                }}
+              >
+                <Languages
+                  size={20}
+                />
+
+                <div>
+                  <strong>
+                    Explanation Language
+                  </strong>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "13px",
+                      color:
+                        "#6b7280",
+                      marginTop:
+                        "3px",
+                    }}
+                  >
+                    Choose how FormBuddy
+                    explains the form.
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display:
+                    "flex",
+                  gap: "6px",
+                  padding:
+                    "4px",
+                  borderRadius:
+                    "10px",
+                  background:
+                    darkMode
+                      ? "#252b38"
+                      : "#f1f5f9",
+                }}
+              >
+                <button
+                  onClick={() =>
+                    setLanguage(
+                      "english"
+                    )
+                  }
+                  style={{
+                    border: "none",
+                    cursor:
+                      "pointer",
+                    padding:
+                      "8px 14px",
+                    borderRadius:
+                      "7px",
+                    fontWeight:
+                      "600",
+                    background:
+                      !isHinglish
+                        ? "#6366f1"
+                        : "transparent",
+                    color:
+                      !isHinglish
+                        ? "#ffffff"
+                        : darkMode
+                        ? "#ffffff"
+                        : "#374151",
+                  }}
+                >
+                  🇬🇧 English
+                </button>
+
+                <button
+                  onClick={() =>
+                    setLanguage(
+                      "hinglish"
+                    )
+                  }
+                  style={{
+                    border: "none",
+                    cursor:
+                      "pointer",
+                    padding:
+                      "8px 14px",
+                    borderRadius:
+                      "7px",
+                    fontWeight:
+                      "600",
+                    background:
+                      isHinglish
+                        ? "#6366f1"
+                        : "transparent",
+                    color:
+                      isHinglish
+                        ? "#ffffff"
+                        : darkMode
+                        ? "#ffffff"
+                        : "#374151",
+                  }}
+                >
+                  🇮🇳 Hinglish
+                </button>
+              </div>
+            </div>
+
+            {/* CHECKLIST */}
 
             <div className="checklist-card">
               <div className="checklist-header">
                 <div>
                   <div className="checklist-title">
-                    <ClipboardCheck size={20} />
-                    Form Completion Checklist
+                    <ClipboardCheck
+                      size={20}
+                    />
+
+                    Form Completion
+                    Checklist
                   </div>
 
                   <p>
                     {completedCount} of{" "}
-                    {checklistItems.length} completed
+                    {
+                      checklistItems.length
+                    }{" "}
+                    completed
                   </p>
                 </div>
 
-                <strong>{progress}%</strong>
+                <strong>
+                  {progress}%
+                </strong>
               </div>
 
               <div className="progress-bar">
@@ -486,53 +836,74 @@ function App() {
               </div>
 
               <div className="checklist-items">
-                {checklistItems.map((item) => (
-                  <label
-                    key={item.id}
-                    className={
-                      completedItems[item.id]
-                        ? "checklist-item completed"
-                        : "checklist-item"
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      checked={
-                        !!completedItems[item.id]
+                {checklistItems.map(
+                  (item) => (
+                    <label
+                      key={
+                        item.id
                       }
-                      onChange={() =>
-                        toggleChecklistItem(item.id)
+                      className={
+                        completedItems[
+                          item.id
+                        ]
+                          ? "checklist-item completed"
+                          : "checklist-item"
                       }
-                    />
+                    >
+                      <input
+                        type="checkbox"
+                        checked={
+                          !!completedItems[
+                            item.id
+                          ]
+                        }
+                        onChange={() =>
+                          toggleChecklistItem(
+                            item.id
+                          )
+                        }
+                      />
 
-                    <span className="check-box">
-                      {completedItems[item.id] && (
-                        <CheckCircle2 size={16} />
-                      )}
-                    </span>
+                      <span className="check-box">
+                        {completedItems[
+                          item.id
+                        ] && (
+                          <CheckCircle2
+                            size={16}
+                          />
+                        )}
+                      </span>
 
-                    <div>
-                      <strong>{item.title}</strong>
+                      <div>
+                        <strong>
+                          {item.title}
+                        </strong>
 
-                      <p>
-                        {item.description}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+                        <p>
+                          {
+                            item.description
+                          }
+                        </p>
+                      </div>
+                    </label>
+                  )
+                )}
               </div>
 
-              {progress === 100 && (
+              {progress ===
+                100 && (
                 <div className="checklist-success">
-                  <CheckCircle2 size={18} />
-                  Your form is ready for final review!
+                  <CheckCircle2
+                    size={18}
+                  />
+
+                  Your form is ready
+                  for final review!
                 </div>
               )}
             </div>
 
-            {/* ================================
-                PURPOSE
-            ================================= */}
+            {/* PURPOSE + WHO */}
 
             <div className="summary-grid">
               <div className="analysis-card">
@@ -541,11 +912,15 @@ function App() {
                 </div>
 
                 <h3>
-                  What is this form for?
+                  What is this
+                  form for?
                 </h3>
 
                 <p>
-                  {analysis.formPurpose}
+                  {getText(
+                    analysis.formPurpose,
+                    analysis.formPurposeHinglish
+                  )}
                 </p>
               </div>
 
@@ -555,18 +930,20 @@ function App() {
                 </div>
 
                 <h3>
-                  Who needs this form?
+                  Who needs
+                  this form?
                 </h3>
 
                 <p>
-                  {analysis.whoNeedsIt}
+                  {getText(
+                    analysis.whoNeedsIt,
+                    analysis.whoNeedsItHinglish
+                  )}
                 </p>
               </div>
             </div>
 
-            {/* ================================
-                FIELDS
-            ================================= */}
+            {/* FIELDS */}
 
             <div className="analysis-card large-card">
               <div className="card-heading">
@@ -575,18 +952,24 @@ function App() {
                 </div>
 
                 <div>
-                  <h3>Form Fields</h3>
+                  <h3>
+                    Form Fields
+                  </h3>
 
                   <p>
-                    Understand what each field means and
-                    what you should enter.
+                    Understand what each
+                    field means and what
+                    you should enter.
                   </p>
                 </div>
               </div>
 
               <div className="fields-list">
                 {analysis.fields?.map(
-                  (field, index) => (
+                  (
+                    field,
+                    index
+                  ) => (
                     <div
                       className="field-item"
                       key={index}
@@ -597,26 +980,38 @@ function App() {
 
                       <div className="field-content">
                         <h4>
-                          {field.fieldName}
+                          {
+                            field.fieldName
+                          }
                         </h4>
 
                         <div className="field-answer">
                           <strong>
-                            What does it mean?
+                            {isHinglish
+                              ? "Iska kya matlab hai?"
+                              : "What does it mean?"}
                           </strong>
 
                           <p>
-                            {field.explanation}
+                            {getText(
+                              field.explanation,
+                              field.hinglishExplanation
+                            )}
                           </p>
                         </div>
 
                         <div className="field-answer">
                           <strong>
-                            What should I enter?
+                            {isHinglish
+                              ? "Kya enter karein?"
+                              : "What should I enter?"}
                           </strong>
 
                           <p>
-                            {field.whatToEnter}
+                            {getText(
+                              field.whatToEnter,
+                              field.hinglishWhatToEnter
+                            )}
                           </p>
                         </div>
                       </div>
@@ -626,13 +1021,9 @@ function App() {
               </div>
             </div>
 
-            {/* ================================
-                DOCUMENTS + MISTAKES
-            ================================= */}
+            {/* DOCUMENTS + MISTAKES */}
 
             <div className="two-column">
-
-              {/* DOCUMENTS */}
 
               <div className="analysis-card">
                 <div className="card-heading">
@@ -642,24 +1033,42 @@ function App() {
 
                   <div>
                     <h3>
-                      Required Documents
+                      Required
+                      Documents
                     </h3>
 
                     <p>
-                      Keep these ready before applying.
+                      Keep these ready
+                      before applying.
                     </p>
                   </div>
                 </div>
 
-                {analysis.documents?.length > 0 ? (
+                {analysis.documents
+                  ?.length > 0 ? (
                   <ul className="check-list">
                     {analysis.documents.map(
-                      (document, index) => (
-                        <li key={index}>
-                          <CheckCircle2 size={17} />
+                      (
+                        document,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
+                          <CheckCircle2
+                            size={17}
+                          />
 
                           <span>
-                            {document}
+                            {isHinglish
+                              ? analysis
+                                  .documentsHinglish?.[
+                                  index
+                                ] ||
+                                document
+                              : document}
                           </span>
                         </li>
                       )
@@ -667,39 +1076,59 @@ function App() {
                   </ul>
                 ) : (
                   <p>
-                    No specific documents identified.
+                    No specific
+                    documents
+                    identified.
                   </p>
                 )}
               </div>
-
-              {/* MISTAKES */}
 
               <div className="analysis-card">
                 <div className="card-heading">
                   <div className="card-icon red">
-                    <AlertTriangle size={22} />
+                    <AlertTriangle
+                      size={22}
+                    />
                   </div>
 
                   <div>
                     <h3>
-                      Common Mistakes
+                      Common
+                      Mistakes
                     </h3>
 
                     <p>
-                      Things to check before submitting.
+                      Things to check
+                      before submitting.
                     </p>
                   </div>
                 </div>
 
-                {analysis.mistakes?.length > 0 ? (
+                {analysis.mistakes
+                  ?.length > 0 ? (
                   <ul className="warning-list">
                     {analysis.mistakes.map(
-                      (mistake, index) => (
-                        <li key={index}>
-                          <AlertTriangle size={17} />
+                      (
+                        mistake,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
+                          <AlertTriangle
+                            size={17}
+                          />
 
                           <span>
-                            {mistake}
+                            {isHinglish
+                              ? analysis
+                                  .mistakesHinglish?.[
+                                  index
+                                ] ||
+                                mistake
+                              : mistake}
                           </span>
                         </li>
                       )
@@ -707,15 +1136,16 @@ function App() {
                   </ul>
                 ) : (
                   <p>
-                    No specific mistakes identified.
+                    No specific
+                    mistakes
+                    identified.
                   </p>
                 )}
               </div>
+
             </div>
 
-            {/* ================================
-                IMPORTANT NOTES
-            ================================= */}
+            {/* IMPORTANT NOTES */}
 
             <div className="analysis-card notes-card">
               <div className="card-heading">
@@ -724,37 +1154,57 @@ function App() {
                 </div>
 
                 <div>
-                  <h3>Important Notes</h3>
+                  <h3>
+                    Important Notes
+                  </h3>
 
                   <p>
-                    Extra information you should know.
+                    Extra information
+                    you should know.
                   </p>
                 </div>
               </div>
 
-              {analysis.importantNotes?.length > 0 ? (
+              {analysis
+                .importantNotes
+                ?.length > 0 ? (
                 <ul className="notes-list">
                   {analysis.importantNotes.map(
-                    (note, index) => (
-                      <li key={index}>
-                        {note}
+                    (
+                      note,
+                      index
+                    ) => (
+                      <li
+                        key={
+                          index
+                        }
+                      >
+                        {isHinglish
+                          ? analysis
+                              .importantNotesHinglish?.[
+                              index
+                            ] ||
+                            note
+                          : note}
                       </li>
                     )
                   )}
                 </ul>
               ) : (
                 <p>
-                  No additional notes.
+                  No additional
+                  notes.
                 </p>
               )}
             </div>
+
           </div>
         </section>
       )}
 
-      {/* ================================
+      {/* =========================
           FEATURES
-      ================================= */}
+      ========================= */}
 
       <section
         className="features"
@@ -766,11 +1216,13 @@ function App() {
           </span>
 
           <h2>
-            Everything you need to understand a form
+            Everything you need to
+            understand a form
           </h2>
 
           <p>
-            FormBuddy turns confusing paperwork into simple,
+            FormBuddy turns confusing
+            paperwork into simple,
             understandable information.
           </p>
         </div>
@@ -787,7 +1239,8 @@ function App() {
             </h3>
 
             <p>
-              Understand complicated fields without confusing
+              Understand complicated
+              fields without confusing
               technical language.
             </p>
           </div>
@@ -802,8 +1255,9 @@ function App() {
             </h3>
 
             <p>
-              Know which documents you should keep ready
-              before submitting your form.
+              Know which documents you
+              should keep ready before
+              submitting your form.
             </p>
           </div>
 
@@ -817,26 +1271,31 @@ function App() {
             </h3>
 
             <p>
-              Identify possible mistakes and important
-              instructions before submission.
+              Identify possible mistakes
+              and important instructions
+              before submission.
             </p>
           </div>
 
         </div>
       </section>
 
-      {/* ================================
+      {/* =========================
           FOOTER
-      ================================= */}
+      ========================= */}
 
       <footer>
         <div className="footer-brand">
           <Sparkles size={18} />
-          <strong>FormBuddy AI</strong>
+
+          <strong>
+            FormBuddy AI
+          </strong>
         </div>
 
         <p>
-          Making complicated forms easier to understand.
+          Making complicated forms
+          easier to understand.
         </p>
       </footer>
     </div>
