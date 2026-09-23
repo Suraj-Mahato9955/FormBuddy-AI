@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   CheckCircle2,
+  ClipboardCheck,
 } from "lucide-react";
 import "./App.css";
 
@@ -22,6 +23,8 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
+
+  const [completedItems, setCompletedItems] = useState({});
 
   const fileInputRef = useRef(null);
 
@@ -39,6 +42,7 @@ function App() {
     setError("");
     setMessage("");
     setAnalysis(null);
+    setCompletedItems({});
 
     if (!allowedTypes.includes(selectedFile.type)) {
       setError("Please upload a PDF, JPG, or PNG file.");
@@ -60,6 +64,7 @@ function App() {
     setError("");
     setMessage("");
     setAnalysis(null);
+    setCompletedItems({});
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -76,6 +81,7 @@ function App() {
     setError("");
     setMessage("");
     setAnalysis(null);
+    setCompletedItems({});
 
     const formData = new FormData();
     formData.append("form", file);
@@ -114,6 +120,7 @@ function App() {
     setError("");
     setMessage("");
     setAnalysis(null);
+    setCompletedItems({});
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -126,7 +133,9 @@ function App() {
   };
 
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return `${bytes} Bytes`;
+    if (bytes < 1024) {
+      return `${bytes} Bytes`;
+    }
 
     if (bytes < 1024 * 1024) {
       return `${(bytes / 1024).toFixed(1)} KB`;
@@ -135,14 +144,64 @@ function App() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  /* ================================
+     SMART CHECKLIST
+  ================================= */
+
+  const checklistItems = [
+    {
+      id: "fields",
+      title: "Complete Form Fields",
+      description:
+        "Review and complete all important fields.",
+    },
+    {
+      id: "documents",
+      title: "Prepare Required Documents",
+      description:
+        "Keep all required documents ready.",
+    },
+    {
+      id: "mistakes",
+      title: "Check for Mistakes",
+      description:
+        "Review possible mistakes before submitting.",
+    },
+    {
+      id: "notes",
+      title: "Read Important Notes",
+      description:
+        "Check deadlines, instructions and declarations.",
+    },
+  ];
+
+  const toggleChecklistItem = (id) => {
+    setCompletedItems((previous) => ({
+      ...previous,
+      [id]: !previous[id],
+    }));
+  };
+
+  const completedCount = checklistItems.filter(
+    (item) => completedItems[item.id]
+  ).length;
+
+  const progress = Math.round(
+    (completedCount / checklistItems.length) * 100
+  );
+
   return (
     <div className={`app ${darkMode ? "dark" : ""}`}>
-      {/* NAVBAR */}
+      {/* ================================
+          NAVBAR
+      ================================= */}
+
       <nav className="navbar">
         <div className="brand">
           <div className="brand-icon">
             <Sparkles size={20} />
           </div>
+
           <div>
             <h2>FormBuddy</h2>
             <span>AI Form Assistant</span>
@@ -151,8 +210,13 @@ function App() {
 
         <div className="nav-right">
           <div className="nav-links">
-            <a href="#how-it-works">How it works</a>
-            <a href="#features">Features</a>
+            <a href="#how-it-works">
+              How it works
+            </a>
+
+            <a href="#features">
+              Features
+            </a>
           </div>
 
           <button
@@ -169,7 +233,10 @@ function App() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* ================================
+          HERO
+      ================================= */}
+
       <main className="hero">
         <div className="hero-content">
           <div className="badge">
@@ -180,15 +247,18 @@ function App() {
           <h1>
             Understand Any Form.
             <br />
-            <span>Complete It With Confidence.</span>
+            <span>
+              Complete It With Confidence.
+            </span>
           </h1>
 
           <p className="description">
-            Upload a complex form and FormBuddy AI will explain
-            every important field in simple language.
+            Upload a complex form and FormBuddy AI will
+            explain every important field in simple language.
           </p>
 
           {/* UPLOAD BOX */}
+
           <div className="upload-box">
             {!file ? (
               <>
@@ -293,21 +363,33 @@ function App() {
         </div>
       </main>
 
-      {/* HOW IT WORKS */}
-      <section className="how-section" id="how-it-works">
+      {/* ================================
+          HOW IT WORKS
+      ================================= */}
+
+      <section
+        className="how-section"
+        id="how-it-works"
+      >
         <div className="section-heading">
           <span>Simple process</span>
+
           <h2>How FormBuddy works</h2>
+
           <p>
-            No complicated instructions. Just upload and understand.
+            No complicated instructions. Just upload and
+            understand.
           </p>
         </div>
 
         <div className="steps">
           <div className="step">
             <div className="step-number">1</div>
+
             <Upload size={25} />
+
             <h3>Upload</h3>
+
             <p>
               Upload your PDF or image of the form.
             </p>
@@ -315,8 +397,11 @@ function App() {
 
           <div className="step">
             <div className="step-number">2</div>
+
             <Sparkles size={25} />
+
             <h3>AI Analysis</h3>
+
             <p>
               FormBuddy reads and understands the form.
             </p>
@@ -324,8 +409,11 @@ function App() {
 
           <div className="step">
             <div className="step-number">3</div>
+
             <CheckCircle2 size={25} />
+
             <h3>Understand</h3>
+
             <p>
               Get simple explanations and useful guidance.
             </p>
@@ -333,10 +421,16 @@ function App() {
         </div>
       </section>
 
-      {/* ANALYSIS */}
+      {/* ================================
+          ANALYSIS
+      ================================= */}
+
       {analysis && (
         <section className="analysis-section">
           <div className="analysis-container">
+
+            {/* ANALYSIS HEADER */}
+
             <div className="analysis-top">
               <div>
                 <div className="analysis-label">
@@ -361,15 +455,98 @@ function App() {
               </button>
             </div>
 
-            {/* PURPOSE */}
+            {/* ================================
+                SMART CHECKLIST
+            ================================= */}
+
+            <div className="checklist-card">
+              <div className="checklist-header">
+                <div>
+                  <div className="checklist-title">
+                    <ClipboardCheck size={20} />
+                    Form Completion Checklist
+                  </div>
+
+                  <p>
+                    {completedCount} of{" "}
+                    {checklistItems.length} completed
+                  </p>
+                </div>
+
+                <strong>{progress}%</strong>
+              </div>
+
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${progress}%`,
+                  }}
+                />
+              </div>
+
+              <div className="checklist-items">
+                {checklistItems.map((item) => (
+                  <label
+                    key={item.id}
+                    className={
+                      completedItems[item.id]
+                        ? "checklist-item completed"
+                        : "checklist-item"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        !!completedItems[item.id]
+                      }
+                      onChange={() =>
+                        toggleChecklistItem(item.id)
+                      }
+                    />
+
+                    <span className="check-box">
+                      {completedItems[item.id] && (
+                        <CheckCircle2 size={16} />
+                      )}
+                    </span>
+
+                    <div>
+                      <strong>{item.title}</strong>
+
+                      <p>
+                        {item.description}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {progress === 100 && (
+                <div className="checklist-success">
+                  <CheckCircle2 size={18} />
+                  Your form is ready for final review!
+                </div>
+              )}
+            </div>
+
+            {/* ================================
+                PURPOSE
+            ================================= */}
+
             <div className="summary-grid">
               <div className="analysis-card">
                 <div className="card-icon blue">
                   <FileCheck size={22} />
                 </div>
 
-                <h3>What is this form for?</h3>
-                <p>{analysis.formPurpose}</p>
+                <h3>
+                  What is this form for?
+                </h3>
+
+                <p>
+                  {analysis.formPurpose}
+                </p>
               </div>
 
               <div className="analysis-card">
@@ -377,12 +554,20 @@ function App() {
                   <User size={22} />
                 </div>
 
-                <h3>Who needs this form?</h3>
-                <p>{analysis.whoNeedsIt}</p>
+                <h3>
+                  Who needs this form?
+                </h3>
+
+                <p>
+                  {analysis.whoNeedsIt}
+                </p>
               </div>
             </div>
 
-            {/* FIELDS */}
+            {/* ================================
+                FIELDS
+            ================================= */}
+
             <div className="analysis-card large-card">
               <div className="card-heading">
                 <div className="card-icon green">
@@ -391,6 +576,7 @@ function App() {
 
                 <div>
                   <h3>Form Fields</h3>
+
                   <p>
                     Understand what each field means and
                     what you should enter.
@@ -399,35 +585,55 @@ function App() {
               </div>
 
               <div className="fields-list">
-                {analysis.fields?.map((field, index) => (
-                  <div
-                    className="field-item"
-                    key={index}
-                  >
-                    <div className="field-number">
-                      {index + 1}
-                    </div>
-
-                    <div className="field-content">
-                      <h4>{field.fieldName}</h4>
-
-                      <div className="field-answer">
-                        <strong>What does it mean?</strong>
-                        <p>{field.explanation}</p>
+                {analysis.fields?.map(
+                  (field, index) => (
+                    <div
+                      className="field-item"
+                      key={index}
+                    >
+                      <div className="field-number">
+                        {index + 1}
                       </div>
 
-                      <div className="field-answer">
-                        <strong>What should I enter?</strong>
-                        <p>{field.whatToEnter}</p>
+                      <div className="field-content">
+                        <h4>
+                          {field.fieldName}
+                        </h4>
+
+                        <div className="field-answer">
+                          <strong>
+                            What does it mean?
+                          </strong>
+
+                          <p>
+                            {field.explanation}
+                          </p>
+                        </div>
+
+                        <div className="field-answer">
+                          <strong>
+                            What should I enter?
+                          </strong>
+
+                          <p>
+                            {field.whatToEnter}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
 
-            {/* DOCUMENTS + MISTAKES */}
+            {/* ================================
+                DOCUMENTS + MISTAKES
+            ================================= */}
+
             <div className="two-column">
+
+              {/* DOCUMENTS */}
+
               <div className="analysis-card">
                 <div className="card-heading">
                   <div className="card-icon orange">
@@ -435,8 +641,13 @@ function App() {
                   </div>
 
                   <div>
-                    <h3>Required Documents</h3>
-                    <p>Keep these ready before applying.</p>
+                    <h3>
+                      Required Documents
+                    </h3>
+
+                    <p>
+                      Keep these ready before applying.
+                    </p>
                   </div>
                 </div>
 
@@ -446,15 +657,22 @@ function App() {
                       (document, index) => (
                         <li key={index}>
                           <CheckCircle2 size={17} />
-                          <span>{document}</span>
+
+                          <span>
+                            {document}
+                          </span>
                         </li>
                       )
                     )}
                   </ul>
                 ) : (
-                  <p>No specific documents identified.</p>
+                  <p>
+                    No specific documents identified.
+                  </p>
                 )}
               </div>
+
+              {/* MISTAKES */}
 
               <div className="analysis-card">
                 <div className="card-heading">
@@ -463,8 +681,13 @@ function App() {
                   </div>
 
                   <div>
-                    <h3>Common Mistakes</h3>
-                    <p>Things to check before submitting.</p>
+                    <h3>
+                      Common Mistakes
+                    </h3>
+
+                    <p>
+                      Things to check before submitting.
+                    </p>
                   </div>
                 </div>
 
@@ -474,18 +697,26 @@ function App() {
                       (mistake, index) => (
                         <li key={index}>
                           <AlertTriangle size={17} />
-                          <span>{mistake}</span>
+
+                          <span>
+                            {mistake}
+                          </span>
                         </li>
                       )
                     )}
                   </ul>
                 ) : (
-                  <p>No specific mistakes identified.</p>
+                  <p>
+                    No specific mistakes identified.
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* NOTES */}
+            {/* ================================
+                IMPORTANT NOTES
+            ================================= */}
+
             <div className="analysis-card notes-card">
               <div className="card-heading">
                 <div className="card-icon yellow">
@@ -494,7 +725,10 @@ function App() {
 
                 <div>
                   <h3>Important Notes</h3>
-                  <p>Extra information you should know.</p>
+
+                  <p>
+                    Extra information you should know.
+                  </p>
                 </div>
               </div>
 
@@ -502,23 +736,39 @@ function App() {
                 <ul className="notes-list">
                   {analysis.importantNotes.map(
                     (note, index) => (
-                      <li key={index}>{note}</li>
+                      <li key={index}>
+                        {note}
+                      </li>
                     )
                   )}
                 </ul>
               ) : (
-                <p>No additional notes.</p>
+                <p>
+                  No additional notes.
+                </p>
               )}
             </div>
           </div>
         </section>
       )}
 
-      {/* FEATURES */}
-      <section className="features" id="features">
+      {/* ================================
+          FEATURES
+      ================================= */}
+
+      <section
+        className="features"
+        id="features"
+      >
         <div className="section-heading">
-          <span>Built for real-world forms</span>
-          <h2>Everything you need to understand a form</h2>
+          <span>
+            Built for real-world forms
+          </span>
+
+          <h2>
+            Everything you need to understand a form
+          </h2>
+
           <p>
             FormBuddy turns confusing paperwork into simple,
             understandable information.
@@ -526,12 +776,15 @@ function App() {
         </div>
 
         <div className="feature-container">
+
           <div className="feature-card">
             <div className="feature-icon">
               <Lightbulb size={24} />
             </div>
 
-            <h3>Simple Explanations</h3>
+            <h3>
+              Simple Explanations
+            </h3>
 
             <p>
               Understand complicated fields without confusing
@@ -544,7 +797,9 @@ function App() {
               <FileCheck size={24} />
             </div>
 
-            <h3>Document Checklist</h3>
+            <h3>
+              Document Checklist
+            </h3>
 
             <p>
               Know which documents you should keep ready
@@ -557,17 +812,23 @@ function App() {
               <AlertTriangle size={24} />
             </div>
 
-            <h3>Mistake Detection</h3>
+            <h3>
+              Mistake Detection
+            </h3>
 
             <p>
               Identify possible mistakes and important
               instructions before submission.
             </p>
           </div>
+
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ================================
+          FOOTER
+      ================================= */}
+
       <footer>
         <div className="footer-brand">
           <Sparkles size={18} />
