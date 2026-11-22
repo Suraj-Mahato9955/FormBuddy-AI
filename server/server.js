@@ -67,7 +67,6 @@ const upload = multer({
   },
 });
 
-// Wait function
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
