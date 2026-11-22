@@ -23,7 +23,6 @@ const ai = new GoogleGenAI({
 app.use(cors());
 app.use(express.json());
 
-// Upload folder
 const uploadFolder = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadFolder)) {
