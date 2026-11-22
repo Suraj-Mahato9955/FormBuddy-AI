@@ -264,7 +264,6 @@ app.post("/api/analyze", (req, res, next) => {
 
     console.log("Received file:", req.file.originalname);
 
-    // Upload document to Gemini
     const geminiFile = await ai.files.upload({
       file: uploadedFilePath,
     });
