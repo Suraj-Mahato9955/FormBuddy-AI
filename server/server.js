@@ -70,7 +70,6 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Gemini analysis
 async function analyzeWithGemini(geminiFile, prompt) {
   const model = "gemini-3.6-flash";
   const maxAttempts = 3;
