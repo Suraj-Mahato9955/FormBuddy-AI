@@ -11,7 +11,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Check API key
 if (!process.env.GEMINI_API_KEY) {
   console.error("GEMINI_API_KEY missing in server/.env");
   process.exit(1);
