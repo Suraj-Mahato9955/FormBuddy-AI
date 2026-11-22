@@ -9,8 +9,13 @@ const { GoogleGenAI } = require("@google/genai");
 dotenv.config();
 
 const app = express();
-
 const PORT = process.env.PORT || 5000;
+
+// Check API key
+if (!process.env.GEMINI_API_KEY) {
+  console.error("GEMINI_API_KEY missing in server/.env");
+  process.exit(1);
+}
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -19,20 +24,14 @@ const ai = new GoogleGenAI({
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   UPLOAD FOLDER
-========================= */
-
+// Upload folder
 const uploadFolder = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadFolder)) {
   fs.mkdirSync(uploadFolder, { recursive: true });
 }
 
-/* =========================
-   MULTER CONFIG
-========================= */
-
+// Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadFolder);
@@ -51,7 +50,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
@@ -66,363 +64,342 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(
-        new Error(
-          "Only PDF, JPG and PNG files are allowed."
-        )
-      );
+      cb(new Error("Only PDF, JPG and PNG files are allowed."));
     }
   },
 });
 
-/* =========================
-   HOME ROUTE
-========================= */
+// Wait function
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+// Gemini analysis
+async function analyzeWithGemini(geminiFile, prompt) {
+  const model = "gemini-3.6-flash";
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Gemini attempt ${attempt}`);
+
+      const interaction = await ai.interactions.create({
+        model,
+
+        input: [
+          {
+            type: "document",
+            uri: geminiFile.uri,
+            mime_type: geminiFile.mimeType,
+          },
+          {
+            type: "text",
+            text: prompt,
+          },
+        ],
+
+        response_format: {
+          type: "text",
+          mime_type: "application/json",
+
+          schema: {
+            type: "object",
+
+            properties: {
+              formPurpose: { type: "string" },
+              formPurposeHinglish: { type: "string" },
+              whoNeedsIt: { type: "string" },
+              whoNeedsItHinglish: { type: "string" },
+
+              fields: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    fieldName: { type: "string" },
+                    explanation: { type: "string" },
+                    whatToEnter: { type: "string" },
+                    hinglishExplanation: { type: "string" },
+                    hinglishWhatToEnter: { type: "string" },
+                  },
+                  required: [
+                    "fieldName",
+                    "explanation",
+                    "whatToEnter",
+                    "hinglishExplanation",
+                    "hinglishWhatToEnter",
+                  ],
+                },
+              },
+
+              documents: {
+                type: "array",
+                items: { type: "string" },
+              },
+
+              documentsHinglish: {
+                type: "array",
+                items: { type: "string" },
+              },
+
+              mistakes: {
+                type: "array",
+                items: { type: "string" },
+              },
+
+              mistakesHinglish: {
+                type: "array",
+                items: { type: "string" },
+              },
+
+              importantNotes: {
+                type: "array",
+                items: { type: "string" },
+              },
+
+              importantNotesHinglish: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+
+            required: [
+              "formPurpose",
+              "formPurposeHinglish",
+              "whoNeedsIt",
+              "whoNeedsItHinglish",
+              "fields",
+              "documents",
+              "documentsHinglish",
+              "mistakes",
+              "mistakesHinglish",
+              "importantNotes",
+              "importantNotesHinglish",
+            ],
+          },
+        },
+
+        store: false,
+      });
+
+      return interaction;
+    } catch (error) {
+      const message = error?.message || "";
+      const code = error?.code || error?.status || "";
+      const lowerMessage = message.toLowerCase();
+
+      console.error("Gemini error:", message);
+
+      const is429 =
+        code === 429 ||
+        message.includes("429") ||
+        lowerMessage.includes("quota exceeded") ||
+        lowerMessage.includes("rate limit exceeded") ||
+        lowerMessage.includes("requests per day") ||
+        lowerMessage.includes("free tier");
+
+      if (is429) {
+        const quotaError = new Error("DAILY_QUOTA_EXCEEDED");
+        quotaError.originalMessage = message;
+        throw quotaError;
+      }
+
+      const is503 =
+        code === 503 ||
+        message.includes("503") ||
+        lowerMessage.includes("high demand") ||
+        lowerMessage.includes("service unavailable");
+
+      if (is503 && attempt < maxAttempts) {
+        await wait(attempt === 1 ? 2000 : 5000);
+        continue;
+      }
+
+      if (is503) {
+        const temporaryError = new Error(
+          "GEMINI_TEMPORARILY_UNAVAILABLE"
+        );
+        temporaryError.originalMessage = message;
+        throw temporaryError;
+      }
+
+      throw error;
+    }
+  }
+}
+
+// Home route
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
-    message: "FormBuddy AI server is running 🚀",
+    message: "FormBuddy AI server is running!",
   });
 });
 
-/* =========================
-   ANALYZE FORM
-========================= */
+// Health check route
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Backend connection successful",
+  });
+});
 
-app.post(
-  "/api/analyze",
-  upload.single("form"),
-  async (req, res) => {
-    let uploadedFilePath = null;
-
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "Please upload a form.",
-        });
-      }
-
-      uploadedFilePath = req.file.path;
-
-      console.log(
-        `📄 Received file: ${req.file.originalname}`
-      );
-
-      /* =========================
-         UPLOAD FILE TO GEMINI
-      ========================= */
-
-      const geminiFile = await ai.files.upload({
-        file: uploadedFilePath,
+// Analyze form route
+app.post("/api/analyze", (req, res, next) => {
+  upload.single("form")(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
       });
+    }
 
-      console.log("☁️ File uploaded to Gemini");
+    next();
+  });
+}, async (req, res) => {
+  let uploadedFilePath = null;
 
-      /* =========================
-         AI PROMPT
-      ========================= */
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload a form.",
+      });
+    }
 
-      const prompt = `
-You are FormBuddy AI, an intelligent assistant that helps people understand and complete complicated forms.
+    uploadedFilePath = req.file.path;
+
+    console.log("Received file:", req.file.originalname);
+
+    // Upload document to Gemini
+    const geminiFile = await ai.files.upload({
+      file: uploadedFilePath,
+    });
+
+    console.log("File uploaded to Gemini");
+
+    // Prompt
+    const prompt = `
+You are FormBuddy AI.
 
 Analyze the uploaded form carefully.
 
-Your job is to make the form easy for a normal person to understand.
+Return ONLY valid JSON.
 
-IMPORTANT RULES:
+Do not invent information.
+Use simple English and natural Indian Hinglish.
+Explain the purpose of the form.
+Explain who needs the form.
+Explain every important field and what the user should enter.
+Identify required documents, common mistakes and important notes.
+If information is not specified, clearly mention that.
 
-1. Do not invent information.
-2. Only provide information that can reasonably be understood from the uploaded document.
-3. Explain important fields in simple English.
-4. Also provide a simple Hinglish explanation for every important field.
-5. Explain what the user should enter in each field.
-6. Also provide a Hinglish version of what the user should enter.
-7. Identify the purpose of the form.
-8. Explain who needs this form.
-9. Identify required documents.
-10. Identify possible common mistakes.
-11. Identify important notes, instructions, deadlines, eligibility requirements, signatures, declarations and verification requirements if present.
-12. If something is not clearly available in the form, say that it is not specified instead of guessing.
-13. Keep explanations beginner-friendly.
-14. Hinglish should be natural Indian Hinglish written using English alphabet.
-15. Do not use complex Hindi words.
-
-Return ONLY valid JSON matching the exact structure below.
+Return exactly this JSON structure:
 
 {
   "formPurpose": "Simple English explanation",
   "formPurposeHinglish": "Simple Hinglish explanation",
-
   "whoNeedsIt": "Simple English explanation",
   "whoNeedsItHinglish": "Simple Hinglish explanation",
-
   "fields": [
     {
       "fieldName": "Field name",
-      "explanation": "What this field means in simple English",
-      "whatToEnter": "What the user should enter in simple English",
-      "hinglishExplanation": "What this field means in simple Hinglish",
-      "hinglishWhatToEnter": "What the user should enter in simple Hinglish"
+      "explanation": "Simple English explanation",
+      "whatToEnter": "What the user should enter",
+      "hinglishExplanation": "Simple Hinglish explanation",
+      "hinglishWhatToEnter": "What the user should enter in Hinglish"
     }
   ],
-
-  "documents": [
-    "Document name"
-  ],
-
-  "documentsHinglish": [
-    "Document name explained in simple Hinglish"
-  ],
-
-  "mistakes": [
-    "Possible mistake"
-  ],
-
-  "mistakesHinglish": [
-    "Possible mistake explained in simple Hinglish"
-  ],
-
-  "importantNotes": [
-    "Important note"
-  ],
-
-  "importantNotesHinglish": [
-    "Important note explained in simple Hinglish"
-  ]
+  "documents": ["Required document"],
+  "documentsHinglish": ["Required document in Hinglish"],
+  "mistakes": ["Possible mistake"],
+  "mistakesHinglish": ["Possible mistake in Hinglish"],
+  "importantNotes": ["Important note"],
+  "importantNotesHinglish": ["Important note in Hinglish"]
 }
 `;
 
-      /* =========================
-         GEMINI INTERACTION
-      ========================= */
+    // Gemini API call
+    const interaction = await analyzeWithGemini(
+      geminiFile,
+      prompt
+    );
 
-      const interaction =
-        await ai.interactions.create({
-          model: "gemini-3.6-flash",
+    const analysisText = interaction.output_text;
 
-          input: [
-            {
-              type: "document",
-              uri: geminiFile.uri,
-              mime_type: geminiFile.mimeType,
-            },
+    if (!analysisText) {
+      throw new Error("Gemini returned an empty response.");
+    }
 
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
+    const analysis = JSON.parse(analysisText);
 
-          response_format: {
-            type: "text",
-            mime_type: "application/json",
+    console.log("Form analysis completed successfully");
 
-            schema: {
-              type: "object",
+    return res.json({
+      success: true,
+      analysis,
+    });
+  } catch (error) {
+    console.error("Analysis error:", error);
 
-              properties: {
-                formPurpose: {
-                  type: "string",
-                },
-
-                formPurposeHinglish: {
-                  type: "string",
-                },
-
-                whoNeedsIt: {
-                  type: "string",
-                },
-
-                whoNeedsItHinglish: {
-                  type: "string",
-                },
-
-                fields: {
-                  type: "array",
-
-                  items: {
-                    type: "object",
-
-                    properties: {
-                      fieldName: {
-                        type: "string",
-                      },
-
-                      explanation: {
-                        type: "string",
-                      },
-
-                      whatToEnter: {
-                        type: "string",
-                      },
-
-                      hinglishExplanation: {
-                        type: "string",
-                      },
-
-                      hinglishWhatToEnter: {
-                        type: "string",
-                      },
-                    },
-
-                    required: [
-                      "fieldName",
-                      "explanation",
-                      "whatToEnter",
-                      "hinglishExplanation",
-                      "hinglishWhatToEnter",
-                    ],
-                  },
-                },
-
-                documents: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-
-                documentsHinglish: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-
-                mistakes: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-
-                mistakesHinglish: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-
-                importantNotes: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-
-                importantNotesHinglish: {
-                  type: "array",
-
-                  items: {
-                    type: "string",
-                  },
-                },
-              },
-
-              required: [
-                "formPurpose",
-                "formPurposeHinglish",
-                "whoNeedsIt",
-                "whoNeedsItHinglish",
-                "fields",
-                "documents",
-                "documentsHinglish",
-                "mistakes",
-                "mistakesHinglish",
-                "importantNotes",
-                "importantNotesHinglish",
-              ],
-            },
-          },
-
-          store: false,
-        });
-
-      /* =========================
-         PARSE AI RESPONSE
-      ========================= */
-
-      const analysisText =
-        interaction.output_text;
-
-      const analysis =
-        JSON.parse(analysisText);
-
-      console.log("✅ Form analysis completed");
-
-      /* =========================
-         DELETE LOCAL FILE
-      ========================= */
-
-      if (
-        uploadedFilePath &&
-        fs.existsSync(uploadedFilePath)
-      ) {
-        fs.unlinkSync(uploadedFilePath);
-      }
-
-      /* =========================
-         RESPONSE
-      ========================= */
-
-      res.json({
-        success: true,
-        analysis,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Form analysis error:",
-        error
-      );
-
-      if (
-        uploadedFilePath &&
-        fs.existsSync(uploadedFilePath)
-      ) {
-        try {
-          fs.unlinkSync(uploadedFilePath);
-        } catch (deleteError) {
-          console.error(
-            "File deletion error:",
-            deleteError
-          );
-        }
-      }
-
-      if (
-        error instanceof multer.MulterError &&
-        error.code === "LIMIT_FILE_SIZE"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "File size must be less than 10 MB.",
-        });
-      }
-
-      res.status(500).json({
+    if (error.message === "DAILY_QUOTA_EXCEEDED") {
+      return res.status(429).json({
         success: false,
-        message:
-          error.message ||
-          "Form analysis failed.",
+        message: "Gemini daily API quota exceeded. Please try again later.",
       });
     }
+
+    if (error.message === "GEMINI_TEMPORARILY_UNAVAILABLE") {
+      return res.status(503).json({
+        success: false,
+        message: "Gemini is temporarily busy. Please try again later.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Form analysis failed.",
+    });
+  } finally {
+    if (
+      uploadedFilePath &&
+      fs.existsSync(uploadedFilePath)
+    ) {
+      try {
+        fs.unlinkSync(uploadedFilePath);
+      } catch (error) {
+        console.error("File cleanup error:", error);
+      }
+    }
   }
-);
+});
 
-/* =========================
-   START SERVER
-========================= */
+// Unknown route handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
 
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error("Server error:", error);
+
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  res.status(500).json({
+    success: false,
+    message: error.message || "Internal server error",
+  });
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(
-    `🚀 FormBuddy AI server running on http://localhost:${PORT}`
-  );
+  console.log("--------------------------------");
+  console.log(`FormBuddy AI running on port ${PORT}`);
+  console.log(`http://localhost:${PORT}`);
+  console.log("--------------------------------");
 });
