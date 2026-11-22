@@ -210,7 +210,6 @@ function App() {
         "Form analyzed successfully!"
       );
 
-      /* =================================================
          SAVE NEW ANALYSIS TO HISTORY
       ================================================= */
 
