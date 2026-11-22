@@ -384,7 +384,6 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log("--------------------------------");
   console.log(`FormBuddy AI running on port ${PORT}`);
