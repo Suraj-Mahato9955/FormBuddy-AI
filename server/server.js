@@ -363,7 +363,6 @@ Return exactly this JSON structure:
   }
 });
 
-// Unknown route handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
