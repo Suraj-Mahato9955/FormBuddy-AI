@@ -309,7 +309,6 @@ Return exactly this JSON structure:
 }
 `;
 
-    // Gemini API call
     const interaction = await analyzeWithGemini(
       geminiFile,
       prompt
