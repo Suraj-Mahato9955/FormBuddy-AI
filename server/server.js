@@ -372,7 +372,6 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
 app.use((error, req, res, next) => {
   console.error("Server error:", error);
 
