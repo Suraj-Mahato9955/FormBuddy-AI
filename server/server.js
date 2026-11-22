@@ -270,7 +270,6 @@ app.post("/api/analyze", (req, res, next) => {
 
     console.log("File uploaded to Gemini");
 
-    // Prompt
     const prompt = `
 You are FormBuddy AI.
 
