@@ -82,7 +82,6 @@ function App() {
     }
   }, []);
 
-     SAVE HISTORY TO LOCAL STORAGE
 
   useEffect(() => {
     try {
