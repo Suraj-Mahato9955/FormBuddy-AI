@@ -338,6 +338,7 @@ Return exactly this JSON structure:
       });
     }
 
+
     if (error.message === "GEMINI_TEMPORARILY_UNAVAILABLE") {
       return res.status(503).json({
         success: false,
