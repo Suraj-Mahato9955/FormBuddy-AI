@@ -239,7 +239,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Analyze form route
 app.post("/api/analyze", (req, res, next) => {
   upload.single("form")(req, res, (error) => {
     if (error) {
