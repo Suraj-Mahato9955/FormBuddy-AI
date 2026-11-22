@@ -230,7 +230,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check route
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
