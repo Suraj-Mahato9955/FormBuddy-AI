@@ -391,7 +391,6 @@ function App() {
     return english;
   };
 
-  ===================================================== */
 
   const handleOpenHistory = (item) => {
     setAnalysis(item.analysis);
