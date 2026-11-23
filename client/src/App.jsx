@@ -391,7 +391,6 @@ function App() {
     return english;
   };
 
-     OPEN HISTORY
   ===================================================== */
 
   const handleOpenHistory = (item) => {
